@@ -4,44 +4,35 @@ import viteLogo from "/vite.svg";
 import "./App.css";
 import axios from "axios";
 import ReactSwitch from "react-switch";
+import { useDispatch, useSelector } from "react-redux";
+import {
+  weatherDataAsync,
+  setTempType,
+  setSearchQuery,
+} from "./store/weatherReducer";
 function App() {
+  const dispatch = useDispatch();
+  const state = useSelector((state) => state.weatherSlice);
   const [inputValue, setInputValue] = useState("");
-  const [checked, setChecked] = useState(false);
-  const [weatherData, setWeatherData] = useState([]);
-  useEffect(() => {
-    callingApi();
-  }, [checked]);
-  const handleChange = (val) => {
-    setChecked(!checked);
-  };
 
-  async function callingApi() {
-    if (inputValue !== "") {
-      try {
-        const { data } = await axios.get(
-          `https://api.openweathermap.org/data/2.5/forecast?q=${inputValue}&cnt=5&units=${
-            checked ? "metric" : "imperial"
-          }&appid=337eaa2ba65564479244ff2634a42d1f`
-        );
-        setWeatherData(data?.list);
-      } catch (err) {}
-    }
-  }
+  const handleChange = (val) => {
+    dispatch(setTempType(!state.shownFarenhietTemp));
+    state.searchQuery != "" && dispatch(weatherDataAsync());
+  };
 
   return (
     <div className="App">
       <form className="input-wrapper">
-
         <input
           type="text"
           onChange={(e) => setInputValue(e.target.value)}
           value={inputValue}
           placeholder="Enter location"
         />
-        <div className="toggle-switch" >
-          <p>Farenhit</p>{" "}
+        <div className="toggle-switch">
+          <p>°F</p>
           <ReactSwitch
-            checked={checked}
+            checked={state.shownFarenhietTemp}
             onChange={handleChange}
             onColor="#86d3ff"
             onHandleColor="#2693e6"
@@ -54,27 +45,47 @@ function App() {
             width={48}
             className="react-switch"
             id="material-switch"
-          />{" "}
-          <p>Celcius</p>
+          />
+          <p>°C</p>
         </div>
+        <button
+          className="search-button"
+          onClick={(event) => {
+            event.preventDefault();
+            if (inputValue != "") {
+              dispatch(setSearchQuery(inputValue));
+              dispatch(weatherDataAsync());
+            } else {
+              alert("field is empty");
+            }
+          }}
+        >
+          Search
+        </button>
       </form>
-      <button className="search-button" onClick={callingApi}>
-        Search
-      </button>
-
+      <div>
+        {state.showError && state.searchQuery != "" && "Something went wrong."}
+        {state.showLoader && state.searchQuery != "" && "Loading...."}
+      </div>
       <div className="weather-data-wrapper">
-        {weatherData.map((item) => {
-          console.log();
-          return (
-            <div className="weather-item">
-              <img src={`http://openweathermap.org/img/w/${item?.weather[0]?.icon}.png`} alt="" />
-              <div>Temperature</div>
-              <div className="temp">{item?.main?.temp} {checked?'Farenhit':'Celcius'}</div>
-              <div>Humidity</div>
-              <div className="humidity">{item?.main?.humidity}</div>
-            </div>
-          );
-        })}
+        {!state.showError &&
+          state?.weatherInfo?.map((item, index) => {
+            return (
+              <div className="weather-item" key={index}>
+                <img
+                  src={`http://openweathermap.org/img/w/${item?.weather[0]?.icon}.png`}
+                  alt=""
+                />
+                <div>Temperature</div>
+                <div className="temp">
+                  {item?.main?.temp} {state.shownFarenhietTemp ? "°C" : "°F"}
+                </div>
+                <div>Humidity</div>
+                <div className="humidity">{item?.main?.humidity}</div>
+                <div>{item?.weather[0]?.description}</div>
+              </div>
+            );
+          })}
       </div>
     </div>
   );
